@@ -66,6 +66,44 @@ void Gauss(double** a, double* x, int n) {
 	cout << "Гаусс " << clock() - start << endl;
 }
 
+void LUDecomposition(double** a, int n) {
+	unsigned int start = clock();
+	for (int k = 0; k < n; k++) {
+#pragma omp parallel for
+		for (int i = k + 1; i < n; i++) {
+			double factor = a[i][k] / a[k][k];
+			a[i][k] = factor;
+			for (int j = k + 1; j < n; j++) {
+				a[i][j] -= factor * a[k][j];
+			}
+		}
+	}
+	cout << "LU - разложение " << clock() - start << endl;
+}
+
+void LUSolve(double** lu, double* b, double* x, int n) {
+	// Решение Ly=b
+	unsigned int start = clock();
+	for (int i = 0; i < n; i++) {
+		double sum = 0.0;
+#pragma omp parallel for reduction(+:sum)
+		for (int j = 0; j < i; j++) {
+			sum += lu[i][j] * x[j];
+		}
+		x[i] = b[i] - sum;
+	}
+
+	// Решение Ux=y
+	for (int i = n - 1; i >= 0; i--) {
+		double sum = 0.0;
+#pragma omp parallel for reduction(+:sum)
+		for (int j = i + 1; j < n; j++) {
+			sum += lu[i][j] * x[j];
+		}
+		x[i] = (x[i] - sum) / lu[i][i];
+	}
+	cout << "Решение с LU - разложением " << clock() - start << endl;
+}
 
 int main()
 {
@@ -84,6 +122,10 @@ int main()
 
 	Gauss(a, x, n);
 	cout << "check answers " << CheckAnswers(x1, x, n) << endl;
+
+	//LUDecomposition(a, n);
+	//LUSolve(a, x1, x, n);
+	//cout << "check answers " << CheckAnswers(x1, x, n) << endl;
 	system("pause");
 	return 0;
 
